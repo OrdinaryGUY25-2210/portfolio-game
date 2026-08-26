@@ -1,0 +1,163 @@
+{
+  "meta": {
+    "name": "Aldi Triantama",
+    "tagline": "Portfolio",
+    "worldWidthPx": 6400,
+    "groundY": 520
+  },
+  "characters": [
+    { "id": "wanderer", "label": "Wanderer", "tint": "#c9a66b" },
+    { "id": "scholar", "label": "Scholar", "tint": "#a7b6cf" },
+    { "id": "artisan", "label": "Artisan", "tint": "#c38d94" }
+  ],
+  "zones": [
+    {
+      "id": "web-apps",
+      "title": "Web Apps",
+      "startX": 400,
+      "endX": 2200,
+      "colorKey": "zoneWebApps",
+      "npcSprite": "npc_scholar"
+    },
+    {
+      "id": "interactive-apps",
+      "title": "Interactive Apps",
+      "startX": 2400,
+      "endX": 4200,
+      "colorKey": "zoneInteractive",
+      "npcSprite": "npc_tinkerer"
+    },
+    {
+      "id": "other-designs",
+      "title": "Other Designs",
+      "startX": 4400,
+      "endX": 6200,
+      "colorKey": "zoneOtherDesigns",
+      "npcSprite": "npc_artisan"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-web-01",
+      "zoneId": "web-apps",
+      "worldX": 700,
+      "title": "Aurora Dashboard",
+      "description": "A muted-tone analytics dashboard built with React and a custom charting layer. Focused on legibility over decoration.",
+      "image": "web-apps/aurora-dashboard.webp",
+      "link": "https://example.com/aurora-dashboard",
+      "tags": ["React", "TypeScript", "Charts"]
+    },
+    {
+      "id": "proj-web-02",
+      "zoneId": "web-apps",
+      "worldX": 1150,
+      "title": "Lighthouse Docs",
+      "description": "Documentation site generator with searchable content and versioned pages, deployed as a static bundle.",
+      "image": "web-apps/lighthouse-docs.webp",
+      "link": "",
+      "tags": ["Next.js", "MDX"]
+    },
+    {
+      "id": "proj-web-03",
+      "zoneId": "web-apps",
+      "worldX": 1750,
+      "title": "Tidepool CMS",
+      "description": "A lightweight headless CMS admin panel with a drag-and-drop layout builder.",
+      "image": "web-apps/tidepool-cms.webp",
+      "link": "https://example.com/tidepool-cms",
+      "tags": ["Vue", "Supabase"]
+    },
+    {
+      "id": "proj-int-01",
+      "zoneId": "interactive-apps",
+      "worldX": 2650,
+      "title": "Echo Chamber",
+      "description": "A generative audio-visual toy where pointer movement shapes an ambient soundscape in real time.",
+      "image": "interactive-apps/echo-chamber.webp",
+      "link": "https://example.com/echo-chamber",
+      "tags": ["Canvas API", "Web Audio"]
+    },
+    {
+      "id": "proj-int-02",
+      "zoneId": "interactive-apps",
+      "worldX": 3200,
+      "title": "Paper Boats",
+      "description": "A small physics playground: fold, launch, and race paper boats down a procedurally generated river.",
+      "image": "interactive-apps/paper-boats.webp",
+      "link": "",
+      "tags": ["Matter.js", "Pixi.js"]
+    },
+    {
+      "id": "proj-int-03",
+      "zoneId": "interactive-apps",
+      "worldX": 3800,
+      "title": "This Very Portfolio",
+      "description": "The side-scrolling world you're standing in right now — built with Phaser, React, and Supabase Storage.",
+      "image": "interactive-apps/this-portfolio.webp",
+      "link": "https://github.com/example/pixel-portfolio",
+      "tags": ["Phaser", "React", "Supabase"]
+    },
+    {
+      "id": "proj-other-01",
+      "zoneId": "other-designs",
+      "worldX": 4700,
+      "title": "Muted Type Specimen",
+      "description": "A print-inspired type specimen exploring restrained color pairing across a modular grid.",
+      "image": "other-designs/muted-type-specimen.webp",
+      "link": "",
+      "tags": ["Editorial", "Print"]
+    },
+    {
+      "id": "proj-other-02",
+      "zoneId": "other-designs",
+      "worldX": 5250,
+      "title": "Tile Set: Quiet Village",
+      "description": "A 16x16 pixel-art tile set for a slow-paced village scene, designed around a four-season palette.",
+      "image": "other-designs/quiet-village-tileset.webp",
+      "link": "https://example.com/quiet-village-tileset",
+      "tags": ["Pixel Art", "Aseprite"]
+    },
+    {
+      "id": "proj-other-03",
+      "zoneId": "other-designs",
+      "worldX": 5850,
+      "title": "Icon Set: Soft Tools",
+      "description": "A 32-icon utility set in a rounded, low-saturation style for productivity apps.",
+      "image": "other-designs/soft-tools-icons.webp",
+      "link": "",
+      "tags": ["Icon Design", "Figma"]
+    }
+  ],
+  "certificates": [
+    {
+      "id": "cert-01",
+      "islandX": 900,
+      "title": "Frontend Engineering, Advanced",
+      "issuer": "Example Learning Co.",
+      "date": "2024-03",
+      "description": "Completed an advanced program covering component architecture, performance, and accessibility.",
+      "image": "certificates/frontend-advanced.webp",
+      "link": "https://example.com/certificates/frontend-advanced"
+    },
+    {
+      "id": "cert-02",
+      "islandX": 2900,
+      "title": "Interactive Media Design",
+      "issuer": "Example Academy",
+      "date": "2023-11",
+      "description": "A studio-based certificate focused on generative and interactive digital media.",
+      "image": "certificates/interactive-media.webp",
+      "link": ""
+    },
+    {
+      "id": "cert-03",
+      "islandX": 5400,
+      "title": "Pixel Art & Game Feel",
+      "issuer": "Example Guild",
+      "date": "2022-08",
+      "description": "Workshop certificate on pixel-art production pipelines and game-feel fundamentals.",
+      "image": "certificates/pixel-art-game-feel.webp",
+      "link": "https://example.com/certificates/pixel-art-game-feel"
+    }
+  ]
+}
