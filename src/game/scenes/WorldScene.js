@@ -54,10 +54,13 @@ export default class WorldScene extends Phaser.Scene {
     this.season = getCurrentSeason();
     this.applySeasonTint();
 
+    this.buildFarBackground(worldWidth, groundY);
     this.buildParallaxSky(worldWidth);
     this.buildBirds(worldWidth, groundY);
     this.buildZoneBands(groundY, worldWidth);
     this.buildGround(groundY, worldWidth);
+    this.buildGroundDetailing(groundY, worldWidth);
+    this.buildForestPatches(groundY, worldWidth);
     this.buildPlayer(groundY);
     this.buildVillage(groundY);
     this.buildCertificateIslands(groundY);
@@ -86,6 +89,47 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   // --- World construction ---------------------------------------------------
+
+  /**
+   * Layered mountain ridges + a pine forest silhouette behind everything,
+   * tiled across the world at different scroll factors for parallax depth —
+   * composition inspired by classic pixel-art parallax backgrounds, drawn
+   * from scratch in BootScene (no third-party art embedded).
+   */
+  buildFarBackground(worldWidth, groundY) {
+    const farMountains = this.add.tileSprite(
+      worldWidth / 2,
+      groundY - 180,
+      worldWidth,
+      130,
+      "mountain_far"
+    );
+    farMountains.setScrollFactor(0.1);
+    farMountains.setAlpha(0.75);
+    farMountains.setDepth(-30);
+
+    const nearMountains = this.add.tileSprite(
+      worldWidth / 2,
+      groundY - 120,
+      worldWidth,
+      150,
+      "mountain_near"
+    );
+    nearMountains.setScrollFactor(0.2);
+    nearMountains.setAlpha(0.85);
+    nearMountains.setDepth(-25);
+
+    const forestStrip = this.add.tileSprite(
+      worldWidth / 2,
+      groundY - 40,
+      worldWidth,
+      90,
+      "forest_strip"
+    );
+    forestStrip.setScrollFactor(0.4);
+    forestStrip.setAlpha(0.6);
+    forestStrip.setDepth(-20);
+  }
 
   buildParallaxSky(worldWidth) {
     for (let i = 0; i < 14; i++) {
@@ -167,6 +211,78 @@ export default class WorldScene extends Phaser.Scene {
       const tile = this.add.tileSprite(x + tileSize / 2, groundY + tileSize / 2, tileSize, tileSize, "ground_tile");
       this.physics.add.existing(tile, true);
       this.groundGroup.add(tile);
+    }
+  }
+
+  buildGroundDetailing(groundY, worldWidth) {
+    // Small grass tufts along the top edge of the ground, for a fuller,
+    // less flat foreground — purely decorative, no collision.
+    for (let x = 6; x < worldWidth; x += Phaser.Math.Between(18, 30)) {
+      const tuft = this.add.image(x, groundY - 3, "grass_tuft");
+      tuft.setOrigin(0.5, 1);
+      tuft.setScale(Phaser.Math.FloatBetween(1, 1.6));
+      tuft.setDepth(groundY);
+      tuft.setAlpha(0.9);
+    }
+
+    // Occasional mushrooms/flowers/fallen logs for extra ground-level detail.
+    const propKeys = ["prop_mushroom", "prop_flower", "prop_flower", "prop_log"];
+    for (let x = 20; x < worldWidth; x += Phaser.Math.Between(90, 160)) {
+      if (Math.random() > 0.55) continue;
+      const key = propKeys[Phaser.Math.Between(0, propKeys.length - 1)];
+      const prop = this.add.image(x, groundY - 2, key);
+      prop.setOrigin(0.5, 1);
+      prop.setScale(Phaser.Math.FloatBetween(1, 1.4));
+      prop.setDepth(groundY - 0.5);
+    }
+  }
+
+  /**
+   * Scatters standalone trees/bushes across the whole world so it reads as
+   * a forest with villages carved out of it, rather than empty ground
+   * between houses. Density is higher in the "wilderness" gaps between
+   * zones (i.e. outside any zone's startX–endX) to give a real sense of
+   * traveling through forest to reach the next village, and lighter within
+   * zones so trees frame the houses without hiding them.
+   */
+  buildForestPatches(groundY, worldWidth) {
+    const isInsideAnyZone = (x) =>
+      this.zones.some((z) => x >= z.startX - 20 && x <= z.endX + 20);
+
+    const treeKeys = ["tree_round", "tree_pine"];
+    let key = 0;
+
+    for (let x = 30; x < worldWidth; x += Phaser.Math.Between(70, 130)) {
+      const wilderness = !isInsideAnyZone(x);
+      // Skip some spots inside zones so houses stay clearly readable;
+      // always place in wilderness gaps for a denser forest feel there.
+      if (!wilderness && Math.random() > 0.35) continue;
+
+      const treeKey = treeKeys[key % treeKeys.length];
+      key++;
+      const scale = Phaser.Math.FloatBetween(1.3, 2.1);
+      const tree = this.add.image(x + Phaser.Math.Between(-15, 15), groundY + 4, treeKey);
+      tree.setOrigin(0.5, 1);
+      tree.setScale(scale);
+      tree.setDepth(groundY - 2);
+      tree.setScrollFactor(1);
+
+      // subtle sway for life
+      this.tweens.add({
+        targets: tree,
+        angle: Phaser.Math.FloatBetween(-1.5, 1.5),
+        duration: Phaser.Math.Between(2600, 4200),
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+      });
+
+      if (wilderness && Math.random() > 0.5) {
+        const bush = this.add.image(x + Phaser.Math.Between(-25, 25), groundY + 2, "bush_small");
+        bush.setOrigin(0.5, 1);
+        bush.setScale(Phaser.Math.FloatBetween(1, 1.6));
+        bush.setDepth(groundY - 1);
+      }
     }
   }
 
@@ -505,6 +621,7 @@ export default class WorldScene extends Phaser.Scene {
     const left = this.cursors.left.isDown || this.wasd.A.isDown;
     const right = this.cursors.right.isDown || this.wasd.D.isDown;
     const jump = this.cursors.up.isDown || this.wasd.W.isDown || this.wasd.SPACE.isDown;
+    const moving = left || right;
 
     if (left) {
       this.player.setVelocityX(-PLAYER_SPEED);
@@ -518,6 +635,22 @@ export default class WorldScene extends Phaser.Scene {
 
     if (jump && this.player.body.blocked.down) {
       this.player.setVelocityY(JUMP_VELOCITY);
+    }
+
+    // Real walk-cycle while moving on the ground; idle/blink takes over the
+    // instant the player stops or is airborne.
+    const grounded = this.player.body.blocked.down;
+    if (moving && grounded) {
+      this._walkClock = (this._walkClock || 0) + this.game.loop.delta;
+      if (this._walkClock > 140) {
+        this._walkClock = 0;
+        this._walkFrame = !this._walkFrame;
+        this.player.setTexture(this._walkFrame ? "player_walk_a" : "player_walk_b");
+      }
+      this._wasMoving = true;
+    } else if (this._wasMoving) {
+      this._wasMoving = false;
+      this.player.setTexture("player_idle");
     }
   }
 

@@ -28,6 +28,11 @@ export default class BootScene extends Phaser.Scene {
     this.drawIslandChunk();
     this.drawHouseVariants();
     this.drawChimneySmoke();
+    this.drawMountainLayers();
+    this.drawForestSilhouette();
+    this.drawTreeVariants();
+    this.drawGrassTuft();
+    this.drawGroundProps();
   }
 
   create() {
@@ -37,7 +42,6 @@ export default class BootScene extends Phaser.Scene {
   // --- Procedural pixel-art generators -------------------------------------
 
   drawPlayerFrames() {
-    // Two-frame idle: standing, and a subtle "arm raised" wave/blink frame.
     const g = this.make.graphics({ x: 0, y: 0, add: false });
     const draw = (armUp) => {
       g.clear();
@@ -67,47 +71,76 @@ export default class BootScene extends Phaser.Scene {
     draw(false);
     draw(true);
     g.destroy();
+
+    this.drawPlayerWalkFrames();
   }
 
   /**
-   * Original chibi villager designs (idle + a "step" frame each), inspired by
-   * cozy pixel-village mood boards but drawn from scratch — distinct
-   * silhouettes/outfits, not a copy of any existing character or franchise.
-   * These populate the houses and wander the village to keep the world alive.
+   * Two-frame walk cycle (legs + swinging arm alternate), swapped in by
+   * WorldScene only while the player is actually moving horizontally —
+   * idle/wave frames take over the moment they stop, so it never looks like
+   * they're "walking in place".
    */
+  drawPlayerWalkFrames() {
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    const draw = (strideOffset, frameKey) => {
+      g.clear();
+      // back leg
+      g.fillStyle(PALETTE.slate, 1);
+      g.fillRect(7 - strideOffset, 24, 4, 6);
+      // body (slight lean)
+      g.fillStyle(PALETTE.goldAccent, 1);
+      g.fillRect(6, 10, 12, 14);
+      g.fillStyle(0xb98d52, 1); // shaded side for a touch of depth
+      g.fillRect(15, 10, 3, 14);
+      // head
+      g.fillStyle(0xead9c2, 1);
+      g.fillRect(7, 2, 10, 9);
+      g.fillStyle(PALETTE.ink, 1);
+      g.fillRect(9, 6, 2, 2);
+      g.fillRect(13, 6, 2, 2);
+      // trailing arm
+      g.fillStyle(0xead9c2, 1);
+      g.fillRect(4 + strideOffset, 12, 3, 8);
+      // front leg
+      g.fillStyle(PALETTE.slate, 1);
+      g.fillRect(13 + strideOffset, 24, 4, 6);
+      // leading arm
+      g.fillStyle(0xead9c2, 1);
+      g.fillRect(18 - strideOffset, 12, 3, 8);
+      g.generateTexture(frameKey, 24, 32);
+    };
+    draw(3, "player_walk_a");
+    draw(-3, "player_walk_b");
+    g.destroy();
+  }
+
   drawVillagerFrames() {
     const variants = [
-      { key: "villager_sprout", outfit: 0x9caf88, hair: 0x8a6b4a, skin: 0xead9c2 }, // green apron
-      { key: "villager_tide", outfit: 0xa7b6cf, hair: 0x4a3f35, skin: 0xead9c2 }, // blue cloak
-      { key: "villager_ember", outfit: 0xc38d94, hair: 0xc9a66b, skin: 0xe0c4a8 } // rose scarf
+      { key: "villager_sprout", outfit: 0x9caf88, hair: 0x8a6b4a, skin: 0xead9c2 },
+      { key: "villager_tide", outfit: 0xa7b6cf, hair: 0x4a3f35, skin: 0xead9c2 },
+      { key: "villager_ember", outfit: 0xc38d94, hair: 0xc9a66b, skin: 0xe0c4a8 }
     ];
 
     variants.forEach(({ key, outfit, hair, skin }) => {
       const g = this.make.graphics({ x: 0, y: 0, add: false });
       const drawFrame = (stepOffset, frameKey) => {
         g.clear();
-        // legs (slightly offset per frame to fake a walk-cycle)
         g.fillStyle(PALETTE.ink, 1);
         g.fillRect(7 + stepOffset, 25, 4, 6);
         g.fillRect(13 - stepOffset, 25, 4, 6);
-        // body/outfit
         g.fillStyle(outfit, 1);
         g.fillRect(6, 12, 12, 14);
-        // hair (back)
         g.fillStyle(hair, 1);
         g.fillRect(6, 2, 12, 5);
-        // face
         g.fillStyle(skin, 1);
         g.fillRect(7, 4, 10, 8);
-        // hair (fringe)
         g.fillStyle(hair, 1);
         g.fillRect(6, 3, 3, 4);
         g.fillRect(15, 3, 3, 4);
-        // eyes
         g.fillStyle(PALETTE.ink, 1);
         g.fillRect(9, 7, 2, 2);
         g.fillRect(13, 7, 2, 2);
-        // arms
         g.fillStyle(skin, 1);
         g.fillRect(4, 14, 3, 8);
         g.fillRect(17, 14, 3, 8);
@@ -122,6 +155,11 @@ export default class BootScene extends Phaser.Scene {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
     g.fillStyle(PALETTE.ground, 1);
     g.fillRect(0, 0, 32, 8);
+    // grass blade flecks along the top edge for a fuller, less flat look
+    g.fillStyle(PALETTE.groundDark, 1);
+    for (let i = 0; i < 6; i++) {
+      g.fillRect(2 + i * 5, 4, 2, 4);
+    }
     g.fillStyle(PALETTE.groundDark, 1);
     g.fillRect(0, 8, 32, 24);
     g.fillStyle(PALETTE.soil, 0.5);
@@ -164,18 +202,12 @@ export default class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /**
-   * Small original bird silhouette, two flap frames, muted slate/rose tones
-   * so it reads as ambient wildlife rather than a bright cartoon mascot.
-   */
   drawBirdFrames() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
     const draw = (wingsUp, key) => {
       g.clear();
       g.fillStyle(PALETTE.slate, 1);
-      // body
       g.fillRect(4, 3, 6, 3);
-      // wings
       if (wingsUp) {
         g.fillRect(2, 0, 3, 3);
         g.fillRect(9, 0, 3, 3);
@@ -201,15 +233,13 @@ export default class BootScene extends Phaser.Scene {
   }
 
   /**
-   * Village houses come in two families:
-   *  - "house_project_*"  — BOLD, more saturated palette. These are the
-   *    interactable houses that represent a real project. Slightly larger,
-   *    with a bright roof and a lit window, so they visually pop against...
-   *  - "house_deco_*"     — muted/desaturated palette, plain, no lit window.
-   *    Pure background scenery to make the village feel populated, never
-   *    interactable.
-   * Multiple roof-color variants exist in each family purely for visual
-   * variety along a street of houses.
+   * Village houses: stone-block walls, tiled roof ridge lines, an arched
+   * wooden door, and (on project houses) climbing ivy accents — inspired by
+   * cozy stone-cottage mood boards, drawn from scratch.
+   *  - "house_project_*" — BOLD, saturated roof + lit window + ivy + roof
+   *    flag. These are the interactable houses tied to a real project.
+   *  - "house_deco_*"    — muted/desaturated, plain, no ivy/flag. Pure
+   *    background scenery, never interactable.
    */
   drawHouseVariants() {
     const projectRoofs = [0xc97b5f, 0xb98a4a, 0xa8724f];
@@ -217,47 +247,66 @@ export default class BootScene extends Phaser.Scene {
 
     projectRoofs.forEach((roof, i) => {
       this.drawHouse(`house_project_${i}`, {
-        wall: 0xf1e6cf,
+        wall: 0xe4d3ae,
         roof,
-        door: PALETTE.ink,
+        door: 0x7a5230,
         windowLit: true,
         outline: PALETTE.ink,
-        flag: true
+        flag: true,
+        ivy: true
       });
     });
 
     decoRoofs.forEach((roof, i) => {
       this.drawHouse(`house_deco_${i}`, {
-        wall: 0xd9d2c0,
+        wall: 0xc9c2b2,
         roof,
         door: 0x6c7a89,
         windowLit: false,
         outline: 0x8b8378,
-        flag: false
+        flag: false,
+        ivy: false
       });
     });
   }
 
-  drawHouse(key, { wall, roof, door, windowLit, outline, flag }) {
+  drawHouse(key, { wall, roof, door, windowLit, outline, flag, ivy }) {
     const W = 64;
     const H = 56;
     const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // roof (simple triangle-ish pixel gable)
+    // roof with tile-ridge lines
     g.fillStyle(roof, 1);
     g.fillTriangle(0, 22, W / 2, 0, W, 22);
+    g.lineStyle(1, outline, 0.35);
+    for (let ry = 4; ry < 22; ry += 5) {
+      const spread = (22 - ry) * (W / 2 / 22);
+      g.lineBetween(W / 2 - spread, ry + (22 - ry), W / 2 + spread, ry + (22 - ry));
+    }
     g.lineStyle(2, outline, 1);
     g.strokeTriangle(0, 22, W / 2, 0, W, 22);
 
-    // walls
+    // stone-block wall texture
     g.fillStyle(wall, 1);
     g.fillRect(6, 22, W - 12, H - 22);
+    g.lineStyle(1, outline, 0.3);
+    const blockH = 6;
+    let row = 0;
+    for (let by = 22; by < H; by += blockH) {
+      const offset = row % 2 === 0 ? 0 : 6;
+      for (let bx = 6 + offset; bx < W - 6; bx += 12) {
+        g.strokeRect(bx, by, 12, blockH);
+      }
+      row++;
+    }
     g.lineStyle(2, outline, 1);
     g.strokeRect(6, 22, W - 12, H - 22);
 
-    // door
+    // arched wooden door
     g.fillStyle(door, 1);
-    g.fillRect(W / 2 - 6, H - 16, 12, 16);
+    g.fillRoundedRect(W / 2 - 6, H - 16, 12, 16, { tl: 5, tr: 5, bl: 0, br: 0 });
+    g.lineStyle(1, outline, 0.6);
+    g.lineBetween(W / 2, H - 14, W / 2, H);
 
     // windows
     g.fillStyle(windowLit ? 0xf3d9a0 : 0xb9c3c9, 1);
@@ -271,9 +320,18 @@ export default class BootScene extends Phaser.Scene {
     g.fillStyle(outline, 1);
     g.fillRect(W - 18, 4, 8, 12);
 
+    if (ivy) {
+      // climbing ivy accent along one corner — a warm, lived-in touch,
+      // reserved for the bold/interactable project houses.
+      g.fillStyle(PALETTE.ground, 1);
+      const ivySpots = [
+        [8, 24], [10, 30], [7, 36], [11, 42], [8, 48],
+        [W - 10, 26], [W - 8, 33]
+      ];
+      ivySpots.forEach(([ix, iy]) => g.fillRect(ix, iy, 4, 4));
+    }
+
     if (flag) {
-      // small bold flag/marker on the roof peak — a quiet visual cue that
-      // this house is the interactable/project kind.
       g.fillStyle(PALETTE.goldAccent, 1);
       g.fillRect(W / 2, -6, 2, 10);
       g.fillTriangle(W / 2 + 2, -6, W / 2 + 12, -3, W / 2 + 2, 0);
@@ -289,5 +347,157 @@ export default class BootScene extends Phaser.Scene {
     g.fillCircle(3, 3, 3);
     g.generateTexture("smoke_puff", 6, 6);
     g.destroy();
+  }
+
+  /**
+   * Two parallax mountain-ridge silhouette strips (far = lighter/hazier,
+   * near = a touch darker/greener), tiled behind the world via tileSprite.
+   * Composition inspired by layered pixel-art parallax backgrounds, but the
+   * peaks/colors are original.
+   */
+  drawMountainLayers() {
+    const layers = [
+      { key: "mountain_far", color: 0xb7c6cf, peaks: [40, 70, 35, 85, 45, 65], height: 130 },
+      { key: "mountain_near", color: 0x9cb0a8, peaks: [55, 30, 75, 40, 60, 25], height: 150 }
+    ];
+
+    layers.forEach(({ key, color, peaks, height }) => {
+      const width = 220;
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(color, 1);
+      const segW = width / (peaks.length - 1);
+      g.beginPath();
+      g.moveTo(0, height);
+      peaks.forEach((p, i) => g.lineTo(i * segW, height - p));
+      g.lineTo(width, height);
+      g.closePath();
+      g.fillPath();
+      g.generateTexture(key, width, height);
+      g.destroy();
+    });
+  }
+
+  /**
+   * A tileable strip of pine-tree silhouettes for a mid-distance forest
+   * edge, sitting between the mountain layers and the playable foreground.
+   */
+  drawForestSilhouette() {
+    const width = 180;
+    const height = 90;
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0x7e9a82, 1);
+    const treeXs = [10, 42, 74, 106, 140, 168];
+    treeXs.forEach((x, i) => {
+      const h = 55 + (i % 3) * 10;
+      g.fillTriangle(x, height, x + 16, height - h, x + 32, height);
+    });
+    g.generateTexture("forest_strip", width, height);
+    g.destroy();
+  }
+
+  /**
+   * Standalone foreground trees/bushes used to dot the world and thicken
+   * into denser "hutan" clusters in the wilderness gaps between villages.
+   */
+  drawTreeVariants() {
+    // Round leafy tree
+    {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(PALETTE.soil, 1);
+      g.fillRect(15, 40, 6, 16);
+      g.fillStyle(PALETTE.groundDark, 1);
+      g.fillCircle(18, 22, 20);
+      g.fillStyle(PALETTE.ground, 1);
+      g.fillCircle(12, 18, 14);
+      g.fillCircle(24, 16, 12);
+      g.fillCircle(18, 28, 13);
+      g.generateTexture("tree_round", 36, 56);
+      g.destroy();
+    }
+    // Pine/conifer tree
+    {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(PALETTE.soil, 1);
+      g.fillRect(13, 46, 6, 12);
+      g.fillStyle(0x6f8a72, 1);
+      g.fillTriangle(16, 0, 32, 30, 0, 30);
+      g.fillStyle(PALETTE.ground, 1);
+      g.fillTriangle(16, 14, 30, 40, 2, 40);
+      g.fillStyle(0x89a686, 1);
+      g.fillTriangle(16, 26, 28, 50, 4, 50);
+      g.generateTexture("tree_pine", 32, 58);
+      g.destroy();
+    }
+    // Small bush (used for foreground clutter / hedges)
+    {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(PALETTE.groundDark, 1);
+      g.fillCircle(11, 14, 11);
+      g.fillStyle(PALETTE.ground, 1);
+      g.fillCircle(7, 12, 8);
+      g.fillCircle(15, 12, 8);
+      g.generateTexture("bush_small", 22, 22);
+      g.destroy();
+    }
+  }
+
+  drawGrassTuft() {
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(PALETTE.groundDark, 1);
+    g.fillTriangle(0, 10, 2, 0, 4, 10);
+    g.fillTriangle(3, 10, 5, 2, 7, 10);
+    g.fillTriangle(6, 10, 8, 0, 10, 10);
+    g.generateTexture("grass_tuft", 10, 10);
+    g.destroy();
+  }
+
+  /**
+   * Small original ground clutter (mushroom, flower, log) — same spirit as a
+   * generic pixel-art nature asset pack, drawn from scratch, in our muted
+   * palette rather than a bright saturated one.
+   */
+  drawGroundProps() {
+    // mushroom
+    {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(0xead9c2, 1);
+      g.fillRect(5, 8, 4, 6);
+      g.fillStyle(PALETTE.rose, 1);
+      g.fillRoundedRect(0, 0, 14, 9, 3);
+      g.fillStyle(0xf1e6cf, 0.7);
+      g.fillCircle(4, 4, 1.4);
+      g.fillCircle(10, 3, 1.2);
+      g.generateTexture("prop_mushroom", 14, 14);
+      g.destroy();
+    }
+    // small flower
+    {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(PALETTE.groundDark, 1);
+      g.fillRect(4, 6, 2, 6);
+      g.fillStyle(PALETTE.rose, 1);
+      g.fillCircle(2, 3, 2.2);
+      g.fillCircle(6, 3, 2.2);
+      g.fillCircle(4, 1, 2.2);
+      g.fillCircle(4, 5, 2.2);
+      g.fillStyle(PALETTE.goldAccent, 1);
+      g.fillCircle(4, 3, 1.6);
+      g.generateTexture("prop_flower", 10, 12);
+      g.destroy();
+    }
+    // fallen log
+    {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(PALETTE.soil, 1);
+      g.fillRoundedRect(0, 2, 26, 8, 3);
+      g.fillStyle(0xead9c2, 1);
+      g.fillEllipse(2, 6, 4, 7);
+      g.fillEllipse(24, 6, 4, 7);
+      g.lineStyle(1, PALETTE.ink, 0.4);
+      g.strokeCircle(2, 6, 2);
+      g.strokeCircle(24, 6, 2);
+      g.generateTexture("prop_log", 26, 12);
+      g.destroy();
+    }
   }
 }
