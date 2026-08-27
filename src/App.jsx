@@ -4,6 +4,8 @@ import OverlayManager from "./components/OverlayManager.jsx";
 import CopyrightFooter from "./components/CopyrightFooter.jsx";
 import AdminLoginModal from "./components/AdminLoginModal.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
+import GameCornerMenu from "./components/GameCornerMenu.jsx";
+import InfoModal from "./components/InfoModal.jsx";
 import { loadPortfolioContent } from "./lib/portfolioContent.js";
 import { getAdminSession } from "./lib/supabaseClient.js";
 
@@ -12,14 +14,13 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
   const [showPanel, setShowPanel] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     loadPortfolioContent().then(setPortfolioData);
   }, []);
 
   const handleUnlockTrigger = async () => {
-    // If a valid admin session already exists (e.g. same tab, page not
-    // reloaded), skip straight to the panel instead of asking to log in again.
     const session = await getAdminSession();
     if (session?.user) {
       setAdminUser(session.user);
@@ -55,9 +56,14 @@ export default function App() {
       <div className="game-frame">
         <GameCanvas portfolioData={portfolioData} />
         <OverlayManager />
+        <GameCornerMenu onOpenInfo={() => setShowInfo(true)} />
       </div>
 
-      <CopyrightFooter onUnlock={handleUnlockTrigger} />
+      <div className="copyright-fixed-footer">
+        <CopyrightFooter onUnlock={handleUnlockTrigger} />
+      </div>
+
+      {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
       {showLogin && (
         <AdminLoginModal

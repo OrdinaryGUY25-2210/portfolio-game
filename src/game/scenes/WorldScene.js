@@ -10,22 +10,31 @@ import { getAssetUrl } from "../../lib/supabaseClient.js";
 
 const PLAYER_SPEED = 220;
 const JUMP_VELOCITY = -430;
-const INTERACT_RADIUS = 46;
+const INTERACT_RADIUS = 50;
+const BUBBLE_RADIUS = 110;
+
+const VILLAGER_KEYS = ["villager_sprout", "villager_tide", "villager_ember"];
 
 /**
  * IMPORTANT: portfolioData is NOT imported statically anymore.
  * It's read from `this.registry.get("portfolioData")`, which App.jsx populates
  * once (from local JSON, merged with any live Supabase content) before the
- * game boots. This is what lets the hidden Admin CMS push edits into the
- * running world without a full page reload — see AdminPanel.jsx's
- * `refreshLiveWorld()` which calls `game.registry.set("portfolioData", ...)`
- * and restarts this scene.
+ * game boots. This lets the hidden Admin CMS push edits into the running
+ * world without a full page reload.
+ *
+ * World layout: each project is represented by a bold-colored, interactable
+ * "project house" with a villager standing/wandering nearby. Getting close
+ * (BUBBLE_RADIUS) makes that villager show a speech bubble naming the
+ * project; pressing E within INTERACT_RADIUS opens the full detail overlay.
+ * Extra muted, non-interactive "decorative houses" fill the gaps so the
+ * village reads as lived-in rather than a row of kiosks.
  */
 export default class WorldScene extends Phaser.Scene {
   constructor() {
     super("WorldScene");
     this.activeQuestId = null;
     this.nearbyInteractable = null;
+    this.projectHouses = [];
   }
 
   create() {
@@ -46,11 +55,11 @@ export default class WorldScene extends Phaser.Scene {
     this.applySeasonTint();
 
     this.buildParallaxSky(worldWidth);
+    this.buildBirds(worldWidth, groundY);
     this.buildZoneBands(groundY, worldWidth);
     this.buildGround(groundY, worldWidth);
     this.buildPlayer(groundY);
-    this.buildCategoryGates(groundY);
-    this.buildProjectMarkers(groundY);
+    this.buildVillage(groundY);
     this.buildCertificateIslands(groundY);
     this.buildSeasonParticles(worldWidth);
     this.buildHud();
@@ -91,6 +100,39 @@ export default class WorldScene extends Phaser.Scene {
     }
   }
 
+  buildBirds(worldWidth, groundY) {
+    // A handful of ambient birds drifting across the sky at varying heights,
+    // with a simple two-frame flap animation, to make the world feel alive
+    // even far from any village. Muted slate tone keeps them unobtrusive.
+    this.birds = [];
+    const birdCount = 9;
+    for (let i = 0; i < birdCount; i++) {
+      const startX = Phaser.Math.Between(0, worldWidth);
+      const y = groundY - Phaser.Math.Between(220, 400);
+      const bird = this.add.image(startX, y, "bird_a");
+      bird.setScrollFactor(0.6);
+      bird.setScale(Phaser.Math.FloatBetween(1.2, 1.9));
+      bird.setDepth(-6);
+      bird.flapToggle = Math.random() > 0.5;
+
+      const speed = Phaser.Math.FloatBetween(18, 40);
+      bird.driftSpeed = speed;
+      bird.driftDir = Math.random() > 0.5 ? 1 : -1;
+      if (bird.driftDir < 0) bird.setFlipX(true);
+
+      this.time.addEvent({
+        delay: Phaser.Math.Between(220, 340),
+        loop: true,
+        callback: () => {
+          bird.flapToggle = !bird.flapToggle;
+          bird.setTexture(bird.flapToggle ? "bird_a" : "bird_b");
+        }
+      });
+
+      this.birds.push(bird);
+    }
+  }
+
   buildZoneBands(groundY, worldWidth) {
     this.zoneLabelZones = [];
     this.zones.forEach((zone) => {
@@ -106,7 +148,7 @@ export default class WorldScene extends Phaser.Scene {
       band.setDepth(-5);
 
       const label = this.add
-        .text(zone.startX + 24, groundY - 190, zone.title.toUpperCase(), {
+        .text(zone.startX + 24, groundY - 230, zone.title.toUpperCase(), {
           fontFamily: '"Press Start 2P"',
           fontSize: "12px",
           color: "#4a3f35"
@@ -153,64 +195,181 @@ export default class WorldScene extends Phaser.Scene {
     });
   }
 
-  buildCategoryGates(groundY) {
-    // One signpost per zone, placed just past the zone's entrance. Interacting
-    // with it opens the layered "category list" menu (all projects in that
-    // zone) rather than jumping straight to a single project's detail page —
-    // this is the primary "press category" entry point requested for the
-    // menu-overlay system. Individual project NPCs (buildProjectMarkers)
-    // still allow jumping straight to a detail page for players who prefer
-    // to explore organically.
-    this.gates = this.physics.add.staticGroup();
+  /**
+   * Builds one small village per zone: a bold "project house" + wandering
+   * villager + hidden speech bubble for every project, interleaved with
+   * muted decorative houses that are purely atmospheric (not interactable).
+   */
+  buildVillage(groundY) {
+    this.projectHouses = [];
 
     this.zones.forEach((zone) => {
-      const gateX = zone.startX + 60;
-      const gate = this.add.image(gateX, groundY - 26, "category_gate");
-      gate.setScale(1.6);
-      gate.setData("interactable", {
-        type: "category",
-        id: `gate-${zone.id}`,
-        zoneId: zone.id
-      });
-      this.gates.add(gate);
+      const zoneProjects = this.projects
+        .filter((p) => p.zoneId === zone.id)
+        .sort((a, b) => a.worldX - b.worldX);
 
-      this.tweens.add({
-        targets: gate,
-        y: gate.y - 4,
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut"
+      zoneProjects.forEach((project, i) => {
+        this.buildProjectHouse(project, groundY, i);
       });
+
+      this.buildDecorativeHouses(zone, zoneProjects, groundY);
     });
   }
 
-  buildProjectMarkers(groundY) {
-    this.markers = this.physics.add.staticGroup();
+  buildProjectHouse(project, groundY, variantSeed) {
+    const houseKey = `house_project_${variantSeed % 3}`;
+    const houseY = groundY - 28;
+    const house = this.add.image(project.worldX, houseY, houseKey);
+    house.setScale(1.5);
+    house.setDepth(house.y);
 
-    this.projects.forEach((project) => {
-      const marker = this.add.image(project.worldX, groundY - 110, "marker_gem");
-      marker.setScale(1.6);
-      this.tweens.add({
-        targets: marker,
-        y: marker.y - 8,
-        duration: 1100,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut"
-      });
-
-      const zone = this.zones.find((z) => z.id === project.zoneId);
-      const npc = this.add.image(project.worldX, groundY - 46, zone?.npcSprite || "npc_scholar");
-      npc.setScale(1.8);
-
-      npc.setData("interactable", {
-        type: "project",
-        id: project.id,
-        worldX: project.worldX
-      });
-      this.markers.add(npc);
+    house.setInteractive({ useHandCursor: true });
+    house.setData("interactable", {
+      type: "project",
+      id: project.id,
+      worldX: project.worldX
     });
+
+    // A villager stationed at this house, wandering a short patrol range and
+    // never standing perfectly still.
+    const villagerKey = VILLAGER_KEYS[variantSeed % VILLAGER_KEYS.length];
+    const villager = this.add.sprite(project.worldX + 20, groundY - 30, `${villagerKey}_a`);
+    villager.setScale(1.6);
+    villager.setDepth(villager.y + 1);
+
+    const patrolRange = 30;
+    const baseX = villager.x;
+    this.tweens.add({
+      targets: villager,
+      x: baseX + patrolRange,
+      duration: Phaser.Math.Between(2400, 3400),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      onUpdate: () => {
+        villager.setFlipX(villager.x < villager._lastX);
+        villager._lastX = villager.x;
+      }
+    });
+    villager._lastX = villager.x;
+
+    let stepFrame = false;
+    this.time.addEvent({
+      delay: 320,
+      loop: true,
+      callback: () => {
+        stepFrame = !stepFrame;
+        villager.setTexture(`${villagerKey}_${stepFrame ? "b" : "a"}`);
+      }
+    });
+
+    const bubble = this.createSpeechBubble(
+      project.worldX + 10,
+      houseY - 66,
+      `🏠 ${project.title}`
+    );
+
+    this.projectHouses.push({
+      project,
+      house,
+      villager,
+      bubble,
+      x: project.worldX,
+      y: houseY
+    });
+  }
+
+  buildDecorativeHouses(zone, zoneProjects, groundY) {
+    const projectXs = zoneProjects.map((p) => p.worldX);
+    const candidates = [];
+
+    if (projectXs.length === 0) {
+      candidates.push(zone.startX + (zone.endX - zone.startX) / 2);
+    } else {
+      candidates.push(zone.startX + 50);
+      for (let i = 0; i < projectXs.length - 1; i++) {
+        candidates.push((projectXs[i] + projectXs[i + 1]) / 2);
+      }
+      candidates.push(zone.endX - 50);
+    }
+
+    const MIN_GAP = 95;
+    candidates
+      .filter((x) => projectXs.every((px) => Math.abs(px - x) > MIN_GAP))
+      .forEach((x, i) => {
+        const key = `house_deco_${i % 3}`;
+        const y = groundY - 26;
+        const house = this.add.image(x, y, key);
+        house.setScale(1.3);
+        house.setDepth(house.y - 1);
+        house.setAlpha(0.95);
+
+        // Occasional chimney smoke puffs for ambient life on decorative
+        // houses too, without making them interactable.
+        if (Math.random() > 0.4) {
+          this.time.addEvent({
+            delay: Phaser.Math.Between(1400, 2600),
+            loop: true,
+            callback: () => {
+              const puff = this.add.image(x + 14, y - 44, "smoke_puff");
+              puff.setAlpha(0.5);
+              puff.setScale(1.2);
+              this.tweens.add({
+                targets: puff,
+                y: puff.y - 22,
+                alpha: 0,
+                scale: 2,
+                duration: 1800,
+                onComplete: () => puff.destroy()
+              });
+            }
+          });
+        }
+      });
+  }
+
+  /**
+   * Creates a hidden pixel-styled speech bubble (rounded box + tail, drawn
+   * with Graphics — original artwork, sized to fit the given text) anchored
+   * above a house/villager. Shown ambiently on proximity, no button needed.
+   */
+  createSpeechBubble(x, y, text) {
+    const measurer = this.add.text(0, 0, text, {
+      fontFamily: '"VT323"',
+      fontSize: "15px"
+    });
+    const textWidth = measurer.width;
+    measurer.destroy();
+
+    const paddingX = 10;
+    const boxW = Phaser.Math.Clamp(textWidth + paddingX * 2, 70, 230);
+    const boxH = 34;
+
+    const g = this.add.graphics();
+    g.fillStyle(0xfbf6ea, 0.97);
+    g.fillRoundedRect(-boxW / 2, -boxH, boxW, boxH, 5);
+    g.lineStyle(2, PALETTE.ink, 1);
+    g.strokeRoundedRect(-boxW / 2, -boxH, boxW, boxH, 5);
+    g.fillStyle(0xfbf6ea, 0.97);
+    g.fillTriangle(-6, 0, 6, 0, 0, 8);
+    g.lineStyle(2, PALETTE.ink, 1);
+    g.lineBetween(-6, 0, 0, 8);
+    g.lineBetween(6, 0, 0, 8);
+
+    const label = this.add
+      .text(0, -boxH / 2, text, {
+        fontFamily: '"VT323"',
+        fontSize: "15px",
+        color: "#4a3f35",
+        align: "center",
+        wordWrap: { width: boxW - paddingX * 2 }
+      })
+      .setOrigin(0.5);
+
+    const container = this.add.container(x, y, [g, label]);
+    container.setDepth(500);
+    container.setVisible(false);
+    return container;
   }
 
   buildCertificateIslands(groundY) {
@@ -329,6 +488,8 @@ export default class WorldScene extends Phaser.Scene {
 
   update() {
     this.handleMovement();
+    this.handleBirds();
+    this.handleBubbles();
     this.handleInteractionCheck();
 
     const phase = this.dayNight.update();
@@ -360,26 +521,34 @@ export default class WorldScene extends Phaser.Scene {
     }
   }
 
+  handleBirds() {
+    if (!this.birds) return;
+    const worldWidth = this.meta.worldWidthPx;
+    this.birds.forEach((bird) => {
+      bird.x += bird.driftSpeed * bird.driftDir * (1 / 60);
+      if (bird.driftDir > 0 && bird.x > worldWidth + 40) {
+        bird.x = -40;
+      } else if (bird.driftDir < 0 && bird.x < -40) {
+        bird.x = worldWidth + 40;
+      }
+    });
+  }
+
+  handleBubbles() {
+    this.projectHouses.forEach((entry) => {
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, entry.x, entry.y);
+      entry.bubble.setVisible(dist < BUBBLE_RADIUS);
+    });
+  }
+
   handleInteractionCheck() {
     let closest = null;
     let closestDist = INTERACT_RADIUS;
 
-    this.markers.children.iterate((npc) => {
-      if (!npc) return;
-      const data = npc.getData("interactable");
+    this.projectHouses.forEach(({ house, x, y }) => {
+      const data = house.getData("interactable");
       if (!data) return;
-      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, npc.x, npc.y);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closest = data;
-      }
-    });
-
-    this.gates.children.iterate((gate) => {
-      if (!gate) return;
-      const data = gate.getData("interactable");
-      if (!data) return;
-      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, gate.x, gate.y);
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
       if (dist < closestDist) {
         closestDist = dist;
         closest = data;
@@ -398,7 +567,7 @@ export default class WorldScene extends Phaser.Scene {
 
     if (closest && this.activeQuestId !== closest.id) {
       this.promptText.setVisible(true);
-      this.promptText.setText(closest.type === "category" ? "PRESS E TO BROWSE" : "PRESS E TO VIEW");
+      this.promptText.setText("PRESS E TO VIEW");
       if (Phaser.Input.Keyboard.JustDown(this.wasd.E)) {
         this.triggerQuest(closest);
       }
@@ -411,18 +580,7 @@ export default class WorldScene extends Phaser.Scene {
     this.activeQuestId = entry.id;
 
     let payload = null;
-    if (entry.type === "category") {
-      const zone = this.zones.find((z) => z.id === entry.zoneId);
-      const zoneProjects = this.projects
-        .filter((p) => p.zoneId === entry.zoneId)
-        .map((p) => ({ ...p, imageUrl: getAssetUrl(p.image) }));
-      payload = {
-        kind: "category",
-        zoneId: entry.zoneId,
-        zoneTitle: zone?.title || "Projects",
-        projects: zoneProjects
-      };
-    } else if (entry.type === "project") {
+    if (entry.type === "project") {
       const project = this.projects.find((p) => p.id === entry.id);
       payload = {
         kind: "project",

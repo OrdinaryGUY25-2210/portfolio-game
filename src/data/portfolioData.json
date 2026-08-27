@@ -6,9 +6,21 @@
     "groundY": 520
   },
   "characters": [
-    { "id": "wanderer", "label": "Wanderer", "tint": "#c9a66b" },
-    { "id": "scholar", "label": "Scholar", "tint": "#a7b6cf" },
-    { "id": "artisan", "label": "Artisan", "tint": "#c38d94" }
+    {
+      "id": "wanderer",
+      "label": "Wanderer",
+      "tint": "#c9a66b"
+    },
+    {
+      "id": "scholar",
+      "label": "Scholar",
+      "tint": "#a7b6cf"
+    },
+    {
+      "id": "artisan",
+      "label": "Artisan",
+      "tint": "#c38d94"
+    }
   ],
   "zones": [
     {
@@ -16,24 +28,21 @@
       "title": "Web Apps",
       "startX": 400,
       "endX": 2200,
-      "colorKey": "zoneWebApps",
-      "npcSprite": "npc_scholar"
+      "colorKey": "zoneWebApps"
     },
     {
       "id": "interactive-apps",
       "title": "Interactive Apps",
       "startX": 2400,
       "endX": 4200,
-      "colorKey": "zoneInteractive",
-      "npcSprite": "npc_tinkerer"
+      "colorKey": "zoneInteractive"
     },
     {
       "id": "other-designs",
       "title": "Other Designs",
       "startX": 4400,
       "endX": 6200,
-      "colorKey": "zoneOtherDesigns",
-      "npcSprite": "npc_artisan"
+      "colorKey": "zoneOtherDesigns"
     }
   ],
   "projects": [
@@ -45,7 +54,11 @@
       "description": "A muted-tone analytics dashboard built with React and a custom charting layer. Focused on legibility over decoration.",
       "image": "web-apps/aurora-dashboard.webp",
       "link": "https://example.com/aurora-dashboard",
-      "tags": ["React", "TypeScript", "Charts"]
+      "tags": [
+        "React",
+        "TypeScript",
+        "Charts"
+      ]
     },
     {
       "id": "proj-web-02",
@@ -55,7 +68,10 @@
       "description": "Documentation site generator with searchable content and versioned pages, deployed as a static bundle.",
       "image": "web-apps/lighthouse-docs.webp",
       "link": "",
-      "tags": ["Next.js", "MDX"]
+      "tags": [
+        "Next.js",
+        "MDX"
+      ]
     },
     {
       "id": "proj-web-03",
@@ -65,7 +81,10 @@
       "description": "A lightweight headless CMS admin panel with a drag-and-drop layout builder.",
       "image": "web-apps/tidepool-cms.webp",
       "link": "https://example.com/tidepool-cms",
-      "tags": ["Vue", "Supabase"]
+      "tags": [
+        "Vue",
+        "Supabase"
+      ]
     },
     {
       "id": "proj-int-01",
@@ -75,7 +94,10 @@
       "description": "A generative audio-visual toy where pointer movement shapes an ambient soundscape in real time.",
       "image": "interactive-apps/echo-chamber.webp",
       "link": "https://example.com/echo-chamber",
-      "tags": ["Canvas API", "Web Audio"]
+      "tags": [
+        "Canvas API",
+        "Web Audio"
+      ]
     },
     {
       "id": "proj-int-02",
@@ -85,7 +107,10 @@
       "description": "A small physics playground: fold, launch, and race paper boats down a procedurally generated river.",
       "image": "interactive-apps/paper-boats.webp",
       "link": "",
-      "tags": ["Matter.js", "Pixi.js"]
+      "tags": [
+        "Matter.js",
+        "Pixi.js"
+      ]
     },
     {
       "id": "proj-int-03",
@@ -95,7 +120,11 @@
       "description": "The side-scrolling world you're standing in right now — built with Phaser, React, and Supabase Storage.",
       "image": "interactive-apps/this-portfolio.webp",
       "link": "https://github.com/example/pixel-portfolio",
-      "tags": ["Phaser", "React", "Supabase"]
+      "tags": [
+        "Phaser",
+        "React",
+        "Supabase"
+      ]
     },
     {
       "id": "proj-other-01",
@@ -105,7 +134,10 @@
       "description": "A print-inspired type specimen exploring restrained color pairing across a modular grid.",
       "image": "other-designs/muted-type-specimen.webp",
       "link": "",
-      "tags": ["Editorial", "Print"]
+      "tags": [
+        "Editorial",
+        "Print"
+      ]
     },
     {
       "id": "proj-other-02",
@@ -115,7 +147,10 @@
       "description": "A 16x16 pixel-art tile set for a slow-paced village scene, designed around a four-season palette.",
       "image": "other-designs/quiet-village-tileset.webp",
       "link": "https://example.com/quiet-village-tileset",
-      "tags": ["Pixel Art", "Aseprite"]
+      "tags": [
+        "Pixel Art",
+        "Aseprite"
+      ]
     },
     {
       "id": "proj-other-03",
@@ -125,7 +160,10 @@
       "description": "A 32-icon utility set in a rounded, low-saturation style for productivity apps.",
       "image": "other-designs/soft-tools-icons.webp",
       "link": "",
-      "tags": ["Icon Design", "Figma"]
+      "tags": [
+        "Icon Design",
+        "Figma"
+      ]
     }
   ],
   "certificates": [

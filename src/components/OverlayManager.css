@@ -266,3 +266,47 @@
   color: #6c5f4f;
   padding: 10px 4px;
 }
+
+/* --- Info modal --- */
+
+.info-subhead {
+  font-family: "Press Start 2P", monospace;
+  font-size: 11px;
+  color: var(--ink, #4a3f35);
+  margin: 18px 0 8px;
+}
+.info-subhead:first-of-type {
+  margin-top: 4px;
+}
+
+.info-list {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.info-list li {
+  font-family: "VT323", monospace;
+  font-size: 17px;
+  color: var(--ink, #4a3f35);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 2px solid var(--ink, #4a3f35);
+  flex-shrink: 0;
+}
+.legend-bold {
+  background: #c97b5f;
+}
+.legend-muted {
+  background: #b7b0a0;
+}

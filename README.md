@@ -14,33 +14,43 @@ portfolio-game/
 ├── package.json
 ├── vite.config.js
 ├── .env.example
+├── supabase_schema.sql            # <-- semua SQL/RLS digabung, tinggal paste sekali jalan
 ├── src/
 │   ├── main.jsx
 │   ├── App.jsx
 │   ├── index.css
 │   ├── lib/
-│   │   └── supabaseClient.js      # koneksi Supabase + resolver URL Storage
+│   │   ├── supabaseClient.js      # koneksi Supabase, auth admin, CRUD CMS, resolver URL Storage
+│   │   └── portfolioContent.js    # gabungkan data lokal + data live dari Supabase
 │   ├── data/
-│   │   └── portfolioData.json     # <-- SATU-SATUNYA sumber data proyek/sertifikat/link
+│   │   └── portfolioData.json     # <-- sumber data fallback proyek/sertifikat/link
 │   ├── components/
-│   │   ├── QuestOverlay.jsx       # dialog "quest window" kertas retro
-│   │   └── QuestOverlay.css
+│   │   ├── OverlayManager.jsx     # jendela quest window (detail proyek/sertifikat) + OverlayManager.css
+│   │   ├── DetailView.jsx         # isi jendela detail (gambar, deskripsi, tombol link)
+│   │   ├── CategoryListView.jsx   # (tersedia, tidak dipakai WorldScene saat ini)
+│   │   ├── GameCornerMenu.jsx     # menu ☰ pojok kanan atas + GameCornerMenu.css
+│   │   ├── InfoModal.jsx          # panel Info & Kontrol
+│   │   ├── CopyrightFooter.jsx    # trigger admin 10x klik, dipin di bawah layar
+│   │   ├── AdminLoginModal.jsx    # login admin (email + password)
+│   │   ├── AdminPanel.jsx         # CMS penuh: CRUD proyek & sertifikat
+│   │   └── AdminUI.css
 │   └── game/
-│       ├── GameCanvas.jsx         # bridge React -> Phaser
+│       ├── GameCanvas.jsx         # bridge React -> Phaser, expose window.__portfolioGame
+│       ├── sceneControl.js        # helper kembali ke StartScene dari React
 │       ├── config/
 │       │   ├── gameConfig.js
 │       │   └── palette.js         # token warna pastel-muted
 │       ├── scenes/
-│       │   ├── BootScene.js       # generate pixel art prosedural (tanpa file gambar)
+│       │   ├── BootScene.js       # generate SEMUA pixel art prosedural (rumah, warga, burung, dst)
 │       │   ├── StartScene.js      # layar judul + tombol PRESS START
 │       │   ├── CharacterSelectScene.js
-│       │   └── WorldScene.js      # world side-scrolling utama
+│       │   └── WorldScene.js      # dunia desa side-scrolling utama
 │       └── systems/
 │           ├── DayNightCycle.js   # siklus siang/malam real-time
 │           └── SeasonCycle.js     # siklus 4 musim tiap beberapa hari nyata
 ```
 
-**Catatan penting:** Karena environment build tidak selalu punya sprite pixel art buatan tangan, `BootScene.js` **menggambar semua sprite karakter/tile/ikon secara prosedural** memakai `Phaser.Graphics`, jadi project ini langsung jalan tanpa satupun file gambar di-commit. Untuk foto proyek, sertifikat, dan (opsional) sprite custom, gambar diambil dari **Supabase Storage** lewat `getAssetUrl()` — lihat bagian 3.
+**Catatan penting:** `BootScene.js` **menggambar semua sprite (karakter, warga, rumah, burung, ikon) secara prosedural** memakai `Phaser.Graphics` — 100% orisinal, tidak ada aset pihak ketiga/berhak cipta yang di-embed di project ini. Untuk foto proyek, sertifikat, dan (opsional) sprite custom buatan/lisensi kamu sendiri, gambar diambil dari **Supabase Storage** lewat `getAssetUrl()` — lihat bagian 3.
 
 ---
 
@@ -70,6 +80,8 @@ Karena kamu tidak mau install apa pun secara lokal, ada tiga opsi — pilih sala
 ## 3. Setup Supabase — 100% Lewat Dashboard Web (Tanpa CLI)
 
 Buka https://supabase.com/dashboard di browser. Semua langkah di bawah dilakukan lewat klik-klik UI, tidak ada terminal.
+
+> **Jalan pintas:** Semua perintah SQL di panduan ini (Storage policy, tabel `admins`, `portfolio_projects`, `portfolio_certificates`, `visits`, `world_state`, beserta RLS-nya) sudah digabung jadi satu file **`supabase_schema.sql`** di root project ini. Setelah bikin project & bucket Storage (langkah 3.1 & 3.3), kamu bisa langsung buka **SQL Editor → New query**, paste seluruh isi `supabase_schema.sql`, ganti email `admin@example.com` di dalamnya dengan email admin kamu, lalu **Run** — semua tabel & policy langsung jadi sekali jalan. Bagian di bawah ini tetap saya jelaskan langkah demi langkah kalau kamu mau paham prosesnya atau menjalankan manual.
 
 ### 3.1 Buat Project
 1. Klik **New Project**.
@@ -267,33 +279,48 @@ Buka `http://localhost:5173`.
 |---|---|
 | Jalan kiri/kanan | ← → atau A / D |
 | Lompat | ↑, W, atau Space |
-| Interaksi (signpost kategori, NPC proyek, portal sertifikat) | E |
-| Buka detail proyek dari daftar kategori | Klik baris proyek |
-| Tutup layer overlay teratas / kembali ke layer sebelumnya | Esc atau tombol ✕ di pojok |
+| Buka detail rumah proyek / portal sertifikat | E (saat prompt "PRESS E TO VIEW" muncul) |
+| Tutup overlay yang sedang terbuka | Esc atau tombol ✕ di pojok |
+| Buka menu (kembali ke start / info & kontrol) | Klik ikon ☰ di pojok kanan atas |
 
-### Sistem Overlay Berlapis (Quest Window)
+### Desa & Rumah Penduduk
 
-Setiap zona (Web Apps / Interactive Apps / Other Designs) punya **signpost kategori** di dekat pintu masuknya. Tekan **E** di depan signpost untuk membuka **menu daftar proyek** zona itu — jendela bergaya quest window RPG yang muncul cepat (transisi "snap-open" ala kotak dialog RPG, bukan fade generik).
+Setiap zona sekarang berupa **desa kecil**, bukan papan informasi. Tiap proyek direpresentasikan sebagai **rumah warna cerah/bold** (dengan bendera kecil di atap) — ini yang bisa ditekan (E) untuk membuka halaman detail proyek. Di antara rumah-rumah proyek itu, ada **rumah dekorasi warna pudar/muted** yang mengisi desa supaya terasa ramai — rumah ini murni pemanis visual dan **tidak bisa ditekan**.
 
-Dari daftar itu, klik proyek mana pun untuk membuka **halaman detail** — jendela baru muncul di atas daftar (layered), sedikit bergeser supaya kelihatan jendela sebelumnya masih ada di belakang. Setiap jendela (daftar maupun detail) punya **tombol ✕ sendiri di pojok kanan atas**:
-- Tutup jendela **detail** yang dibuka dari daftar → kembali ke daftar (layer di belakangnya tetap terbuka).
-- Tutup jendela **daftar**, atau jendela **detail** yang dibuka langsung (lewat NPC proyek atau portal sertifikat, tanpa lewat daftar) → seluruh overlay tertutup, kembali menjelajah dunia.
+Di depan tiap rumah proyek, ada **warga (villager)** yang berjalan mondar-mandir pendek (tidak pernah diam total). Saat kamu mendekat, warga itu otomatis menunjukkan **bubble teks** di atas kepalanya berisi nama proyek rumah itu — ini murni info pasif, tidak perlu tombol apa pun. Untuk membuka halaman detail proyeknya (gambar, deskripsi, tombol link), tetap tekan **E** saat sudah cukup dekat.
 
-NPC proyek individual dan portal sertifikat di pulau melayang tetap berfungsi seperti biasa — mendekat lalu tekan **E** langsung membuka halaman detail (tanpa lewat daftar), untuk pemain yang suka eksplorasi langsung. Semua overlay — daftar kategori, detail proyek, detail sertifikat — memakai chrome jendela dan tombol ✕ yang sama persis (`OverlayManager.jsx`), jadi perilakunya konsisten di seluruh dunia game.
+Sertifikat tetap ada di pulau melayang, diakses lewat tangga + portal seperti sebelumnya — dekati portal lalu tekan **E**.
+
+Langit dihiasi **burung-burung** yang terbang melintas dengan animasi kepak sayap 2-frame, selain awan yang sudah ada — semuanya digambar prosedural dengan warna pastel muted, bukan aset pihak ketiga.
+
+### Menu Pojok Kanan Atas & Info/Kontrol
+
+Ikon **☰** selalu ada di pojok kanan atas layar game (baik di start screen maupun saat menjelajah). Klik untuk membuka dua pilihan:
+- **🏠 Menu Utama** — langsung kembali ke Start Screen kapan pun, tanpa reload halaman.
+- **❓ Info & Kontrol** — panel berisi daftar kontrol, legenda warna rumah (bold = proyek, pudar = dekorasi), dan penjelasan singkat elemen dunia lainnya.
+
+### Tata Letak Layar
+
+Area game selalu berada di **tengah layar**. Teks copyright dipindah jadi **footer tetap di bagian paling bawah viewport** (di luar kotak game), kecil dan tidak mengganggu — tempat trigger 10x klik admin tetap di sana.
 
 ## 7. Ringkasan Fitur vs Requirement
 
 - **Start Screen**: `StartScene.js` — potret pixel dengan idle blink/wave, judul "Aldi Triantama - Portfolio", tombol "PRESS START".
 - **Character Select**: `CharacterSelectScene.js`.
-- **World & side-scrolling**: `WorldScene.js`, tiga zona (Web Apps / Interactive Apps / Other Designs) didefinisikan di `portfolioData.json`.
+- **World & side-scrolling**: `WorldScene.js`, tiga zona (Web Apps / Interactive Apps / Other Designs) didefinisikan di `portfolioData.json`, sekarang berupa desa dengan rumah proyek + rumah dekorasi.
 - **Floating islands + ladder/portal untuk sertifikat**: `buildCertificateIslands()` di `WorldScene.js`.
 - **Day/Night cycle real-time**: `DayNightCycle.js` (overlay tint yang di-update tiap frame, siklus 3 menit — bisa diubah lewat `CYCLE_DURATION_MS`).
 - **4-Season cycle tiap beberapa hari nyata**: `SeasonCycle.js` (default 3 hari/musim, lewat `SEASON_LENGTH_DAYS`).
-- **Quest overlay saat mendekati proyek/sertifikat**: sistem berlapis di `OverlayManager.jsx` (+ `CategoryListView.jsx`, `DetailView.jsx`), dipicu event `quest:open` dari `WorldScene.triggerQuest()`. Signpost kategori per zona (`buildCategoryGates()`) membuka daftar proyek; NPC/portal individual membuka detail langsung. Setiap layer punya tombol ✕ sendiri.
-- **Tombol link eksternal hanya muncul jika `link` ada di data**: lihat variabel `hasLink` di `QuestOverlay.jsx`.
+- **Rumah proyek + warga aktif + bubble info**: `buildVillage()`, `buildProjectHouse()`, `createSpeechBubble()` di `WorldScene.js`; warga berpatroli lewat tween, ganti frame jalan tiap 320ms.
+- **Burung di langit**: `buildBirds()` di `WorldScene.js`, tekstur `bird_a`/`bird_b` di `BootScene.js`.
+- **Quest overlay saat menekan rumah proyek/portal sertifikat**: `OverlayManager.jsx` + `DetailView.jsx`, dipicu event `quest:open` dari `WorldScene.triggerQuest()`. Setiap overlay punya tombol ✕ sendiri.
+- **Tombol link eksternal hanya muncul jika `link` ada di data**: lihat variabel `hasLink` di `DetailView.jsx`.
 - **Data lokal, tanpa scraping**: `src/data/portfolioData.json`.
 - **Gambar via Supabase Storage (WebP)**: `getAssetUrl()` di `src/lib/supabaseClient.js`.
 - **Login admin tersembunyi (10x klik copyright) + verifikasi email terdaftar di Supabase + CMS penuh**: `CopyrightFooter.jsx`, `AdminLoginModal.jsx`, `AdminPanel.jsx`, `verifyAdminLogin()` di `supabaseClient.js`.
+- **Menu pojok kanan atas (kembali ke start) + panel Info & Kontrol**: `GameCornerMenu.jsx`, `InfoModal.jsx`, `sceneControl.js`.
+
+> **Catatan soal aset visual:** semua sprite (karakter, warga, rumah, burung, ikon) digambar prosedural dengan Phaser Graphics di `BootScene.js` — orisinal, bukan hasil scan/copy dari game atau ilustrasi pihak ketiga manapun. Kalau kamu punya aset pixel art buatan sendiri (atau yang sudah dibeli lisensinya) dan ingin menggantikan versi prosedural ini, upload ke Supabase Storage lalu sambungkan lewat `getAssetUrl()` seperti gambar proyek/sertifikat.
 
 ---
 
